@@ -35,7 +35,7 @@ func main() {
 						Optional: true,
 					},
 					"kubeconfig_context": &schema.Schema{
-						Type: schema.TypeString,
+						Type:     schema.TypeString,
 						Optional: true,
 					},
 				},
@@ -120,15 +120,12 @@ func kubeconfigPath(m interface{}) (string, func(), error) {
 	return "", cleanupFunc, nil
 }
 
-func kubeconfigContext(m interface{}) string {
-	return m.(*config).kubeconfigContext
-}
-
-func kubectl(m interface{}, kubeconfig string, context string, args ...string) *exec.Cmd {
+func kubectl(m interface{}, kubeconfig string, args ...string) *exec.Cmd {
 	if kubeconfig != "" {
 		args = append([]string{"--kubeconfig", kubeconfig}, args...)
 	}
 
+	context := m.(*config).kubeconfigContext
 	if context != "" {
 		args = append([]string{"--context", context}, args...)
 	}
@@ -143,16 +140,14 @@ func resourceManifestCreate(d *schema.ResourceData, m interface{}) error {
 	}
 	defer cleanup()
 
-	context := kubeconfigContext(m)
-
-	cmd := kubectl(m, kubeconfig, context, "apply", "-f", "-")
+	cmd := kubectl(m, kubeconfig, "apply", "-f", "-")
 	cmd.Stdin = strings.NewReader(d.Get("content").(string))
 	if err := run(cmd); err != nil {
 		return err
 	}
 
 	stdout := &bytes.Buffer{}
-	cmd = kubectl(m, kubeconfig, context, "get", "-f", "-", "-o", "json")
+	cmd = kubectl(m, kubeconfig, "get", "-f", "-", "-o", "json")
 	cmd.Stdin = strings.NewReader(d.Get("content").(string))
 	cmd.Stdout = stdout
 	if err := run(cmd); err != nil {
@@ -187,9 +182,7 @@ func resourceManifestUpdate(d *schema.ResourceData, m interface{}) error {
 	}
 	defer cleanup()
 
-	context := kubeconfigContext(m)
-
-	cmd := kubectl(m, kubeconfig, context, "apply", "-f", "-")
+	cmd := kubectl(m, kubeconfig, "apply", "-f", "-")
 	cmd.Stdin = strings.NewReader(d.Get("content").(string))
 	return run(cmd)
 }
@@ -225,9 +218,7 @@ func resourceManifestDelete(d *schema.ResourceData, m interface{}) error {
 	}
 	defer cleanup()
 
-	context := kubeconfigContext(m)
-
-	cmd := kubectl(m, kubeconfig, context, args...)
+	cmd := kubectl(m, kubeconfig, args...)
 	return run(cmd)
 }
 
@@ -249,9 +240,7 @@ func resourceManifestRead(d *schema.ResourceData, m interface{}) error {
 	}
 	defer cleanup()
 
-	context := kubeconfigContext(m)
-
-	cmd := kubectl(m, kubeconfig, context, args...)
+	cmd := kubectl(m, kubeconfig, args...)
 	cmd.Stdout = stdout
 	if err := run(cmd); err != nil {
 		return err
